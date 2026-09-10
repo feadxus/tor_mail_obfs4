@@ -8,7 +8,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
-SCOPES = ['https://google.com']
+SCOPES = ['https://mail.google.com/']
 
 def get_credentials_from_secrets():
     """核心修正:完全从系统环境变量加载 JSON 凭据,并支持动态刷新"""
