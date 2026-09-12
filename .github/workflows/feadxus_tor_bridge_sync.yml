@@ -34,7 +34,7 @@ jobs:
     # 📂 创建远程据点:去你的 Google Drive 上建一个叫 backup 的文件夹(如果不存在的话)
     - name: Create Google Drive Folder
       run: |
-        rclone mkdir feadxus-Google-Drive:/Gmail || true
+        rclone mkdir FEADXUS-Google-Drive:/Gmail || true
 
     - name: 安装谷歌官方 API 依赖
       run: python go.py
@@ -42,7 +42,7 @@ jobs:
     # 📂 创建远程据点:去你的 Google Drive 上建一个叫 backup 的文件夹(如果不存在的话)
     - name: Create Google Drive Folder
       run: |
-         rclone mkdir fsxedx-Google-Drive:/Gmail || true
+         rclone mkdir FEADXUS-Google-Drive:/Gmail || true
 
     - name: 执行发信与回捞闭环脚本
       env:
