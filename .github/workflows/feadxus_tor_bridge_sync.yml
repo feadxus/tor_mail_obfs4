@@ -26,10 +26,10 @@ jobs:
 
     - name: Setup rclone config
       env:
-         RCLONE_SECRET_DATA: ${{ secrets.GOOGLE_FSXEDX_DRIVE }}
+        RCLONE_SECRET_DATA: ${{ secrets.GOOGLE_FEADXUS_DRIVE }}
       run: |
         mkdir -p ~/.config/rclone
-         echo "$GOOGLE_FSXEDX_DRIVE" > ~/.config/rclone/rclone.conf
+        echo "$RCLONE_SECRET_DATA" > ~/.config/rclone/rclone.conf
 
     - name: 安装谷歌官方 API 依赖
       run: python go.py
