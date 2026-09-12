@@ -1,16 +1,21 @@
 import sys
 import subprocess
 
-# 自动安装指定的依赖工具(包括 Python 库和 age 加密工具)
-packages = [
+# 1. 安装 pip 依赖库
+pip_packages = [
     "google-auth-oauthlib",
-    "google-api-python-client",
-    "age-cli"  # 通过 PyPI 提供的 age 命令行工具打包版
+    "google-api-python-client"
 ]
 
-print("--> 安装依赖工具...")
-subprocess.check_call([sys.executable, "-m", "pip", "install", *packages])
-print("--> 所有工具安装完成!")
+print("--> 1. 正在安装 Python 依赖库...")
+subprocess.check_call([sys.executable, "-m", "pip", "install", *pip_packages])
 
-# 验证 age 是否安装成功
+# 2. 通过 apt 安装原生的 age 工具
+print("--> 2. 正在安装 system 工具 (age)...")
+subprocess.check_call(["sudo", "apt-get", "update", "-qq"])
+subprocess.check_call(["sudo", "apt-get", "install", "-y", "age"])
+
+print("--> 所有依赖和工具安装完成!")
+
+# 3. 验证 age 是否成功安装
 subprocess.check_call(["age", "--version"])
