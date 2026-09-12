@@ -1,4 +1,4 @@
-name: FEADXUS-自动定时获取 Tor 网桥并打印日志
+name: FEADXUS-定时获取----------Tor 网桥
 
 on:
   schedule:
