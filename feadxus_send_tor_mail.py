@@ -1,3 +1,5 @@
+#!/home/tor/.python-env/bin/python
+
 import os
 import json
 import time
@@ -20,14 +22,13 @@ from googleapiclient.discovery import build
 class Config:
     SCOPES = ['https://mail.google.com/']
     BASE_DIR = Path(__file__).resolve().parent
-    TOKEN_PATH = BASE_DIR / 'feadxus-token.json'
     OUTPUT_DIR = BASE_DIR / 'tor_bridges'
-
+    
     TARGET_EMAIL = "bridges@torproject.org"
     SENDER_EMAIL = "feadxus@gmail.com"
     REQUEST_SUBJECT = "get transport obfs4"
     REQUEST_BODY = "get transport obfs4"
-
+    
     POLL_INTERVAL = 10  # 轮询间隔(秒)
     MAX_RETRIES = 6     # 最大重试次数
 
@@ -36,40 +37,40 @@ class Config:
 # 2. 身份认证与 Client 模块 (Auth)
 # ==========================================
 class GmailAuthManager:
-    """负责 Token 的加载、刷新与 Gmail Service 的构建"""
-
+    """负责从环境变量读取 Token，并在内存中刷新与构建 Gmail Service"""
+    
     @staticmethod
     def get_service():
-        creds = GmailAuthManager._load_credentials()
+        creds = GmailAuthManager._load_credentials_from_env()
+
+        # 内存中自动刷新 Token（无需写回本地文件）
         if creds and creds.expired and creds.refresh_token:
             print("🔄 Access Token 已过期，正在自动刷新...")
             creds.refresh(Request())
-            if Config.TOKEN_PATH.exists():
-                Config.TOKEN_PATH.write_text(creds.to_json())
             print("✅ Access Token 刷新成功。")
 
         if not creds or not creds.valid:
-            raise RuntimeError("❌ 未找到有效的凭据 (feadxus-token.json 或 环境变量)。")
+            raise RuntimeError("❌ 未找到有效的凭据，请检查环境变量 GMAIL_TOKEN_JSON 是否配置正确。")
 
         return build('gmail', 'v1', credentials=creds)
 
     @staticmethod
-    def _load_credentials():
-        if Config.TOKEN_PATH.exists():
-            return Credentials.from_authorized_user_file(str(Config.TOKEN_PATH), Config.SCOPES)
+    def _load_credentials_from_env():
+        # 支持 GMAIL_TOKEN_JSON 或 GMAIL_TOKEN_JSON_FEADXUS
+        env_token_str = os.environ.get("GMAIL_TOKEN_JSON") or os.environ.get("GMAIL_TOKEN_JSON_FEADXUS")
+        
+        if not env_token_str:
+            return None
 
-        env_token = os.environ.get("GMAIL_TOKEN_JSON_FEADXUS")
-        if env_token:
-            token_info = json.loads(env_token)
-            return Credentials(
-                token=token_info.get("token"),
-                refresh_token=token_info.get("refresh_token"),
-                token_uri=token_info.get("token_uri", "https://oauth2.googleapis.com/token"),
-                client_id=token_info.get("client_id"),
-                client_secret=token_info.get("client_secret"),
-                scopes=Config.SCOPES
-            )
-        return None
+        token_info = json.loads(env_token_str)
+        return Credentials(
+            token=token_info.get("token"),
+            refresh_token=token_info.get("refresh_token"),
+            token_uri=token_info.get("token_uri", "https://oauth2.googleapis.com/token"),
+            client_id=token_info.get("client_id"),
+            client_secret=token_info.get("client_secret"),
+            scopes=Config.SCOPES
+        )
 
 
 # ==========================================
@@ -77,7 +78,7 @@ class GmailAuthManager:
 # ==========================================
 class EmailExporter:
     """负责将邮件提取为 eml/txt/附件文件"""
-
+    
     @staticmethod
     def export_message(service, msg_id: str, save_dir: Path) -> Path:
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -121,7 +122,7 @@ class EmailExporter:
 # 4. 工作流基类与步骤定义 (Workflow Steps)
 # ==========================================
 class WorkflowContext:
-    """工作流上下文:用于在各个步骤间传递数据"""
+    """工作流上下文：用于在各个步骤间传递数据"""
     def __init__(self, service):
         self.service = service
         self.start_timestamp = time.time()
@@ -186,18 +187,79 @@ class PollAndProcessTorReplyStep(Step):
         return False
 
 
+class CompressAndEncryptStep(Step):
+    """步骤 3: 打包压缩并用 age 加密"""
+    def __init__(self, age_public_key: str):
+        self.age_public_key = age_public_key
+
+    def execute(self, ctx: WorkflowContext) -> bool:
+        if not Config.OUTPUT_DIR.exists() or not any(Config.OUTPUT_DIR.iterdir()):
+            print("⚠️ 文件夹不存在或为空，跳过压缩加密步骤。")
+            return True
+
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        output_filename = f"b-gmail-{date_str}.tar.xz.age"
+        output_filepath = Config.BASE_DIR / output_filename
+
+        folder_to_compress = Config.OUTPUT_DIR.name
+
+        cmd = (
+            f"tar -cJf - -C '{Config.BASE_DIR}' '{folder_to_compress}' | "
+            f"age -r '{self.age_public_key}' > '{output_filepath}'"
+        )
+
+        print(f"📦 正在打包压缩并加密文件夹 [{folder_to_compress}] -> {output_filename}...")
+
+        try:
+            subprocess.run(cmd, shell=True, check=True, cwd=Config.BASE_DIR)
+            print(f"🔒 压缩加密完成！生成文件: {output_filepath.resolve()}")
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"❌ 压缩加密失败: {e}")
+            return False
+
+
+class UploadToGoogleDriveStep(Step):
+    """步骤 4: 使用 rclone 上传至 Google Drive"""
+    def __init__(self, remote_path: str = "fsxedx-Google-Drive:/Gmail/"):
+        self.remote_path = remote_path
+
+    def execute(self, ctx: WorkflowContext) -> bool:
+        if not shutil.which("rclone"):
+            print("⚠️ 未检测到 rclone 命令，跳过 Google Drive 上传步骤。")
+            return True
+
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        output_filename = f"b-gmail-{date_str}.tar.xz.age"
+        local_file = Config.BASE_DIR / output_filename
+
+        if not local_file.exists():
+            print(f"⚠️ 未找到待上传的文件 [{output_filename}]，跳过上传。")
+            return True
+
+        cmd = f"rclone copy '{local_file}' '{self.remote_path}'"
+        print(f"☁️ 正在上传文件到 Google Drive -> {self.remote_path}...")
+
+        try:
+            subprocess.run(cmd, shell=True, check=True)
+            print(f"🎉 成功上传 [{output_filename}] 到 {self.remote_path}")
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"❌ 上传至 Google Drive 失败: {e}")
+            return False
+
+
 # ==========================================
 # 5. 流程调度管道 (Pipeline Runner)
 # ==========================================
 class TorBridgeWorkflow:
-    """工作流管理器:负责注册与顺序执行所有步骤"""
     def __init__(self, service):
         self.ctx = WorkflowContext(service)
         self.steps = []
 
     def add_step(self, step: Step):
         self.steps.append(step)
-        return self  # 支持链式调用
+        return self
 
     def run(self):
         for index, step in enumerate(self.steps, start=1):
@@ -210,99 +272,22 @@ class TorBridgeWorkflow:
         print("\n✨ 所有步骤成功执行完成！")
         return True
 
-# ==========================================
-# 6. 压缩并加密 tor_bridges 目录
-# ==========================================
-class CompressAndEncryptStep(Step):
-    """步骤 3: 将下载的目录打包压缩并用 age 加密"""
-    def __init__(self, age_public_key: str):
-        self.age_public_key = age_public_key
-
-    def execute(self, ctx: WorkflowContext) -> bool:
-        if not Config.OUTPUT_DIR.exists() or not any(Config.OUTPUT_DIR.iterdir()):
-            print("⚠️ 文件夹不存在或为空，跳过压缩加密步骤。")
-            return True
-
-        date_str = datetime.now().strftime("%Y-%m-%d")
-        # 导出的加密文件名，例如:b-gmail-2026-09-12.tar.xz.age
-        output_filename = f"b-gmail-{date_str}.tar.xz.age"
-        output_filepath = Config.BASE_DIR / output_filename
-
-        folder_to_compress = Config.OUTPUT_DIR.name  # "tor_bridges"
-
-        # 构造管道shell命令
-        cmd = (
-            f"tar -cJf - -C '{Config.BASE_DIR}' '{folder_to_compress}' | "
-            f"age -r '{self.age_public_key}' > '{output_filepath}'"
-        )
-
-        print(f"📦 正在打包压缩并加密文件夹 [{folder_to_compress}] -> {output_filename}...")
-
-        try:
-            # 执行 Shell 管道命令
-            result = subprocess.run(cmd, shell=True, check=True, cwd=Config.BASE_DIR)
-            print(f"🔒 压缩加密完成！生成文件: {output_filepath.resolve()}")
-            return True
-        except subprocess.CalledProcessError as e:
-            print(f"❌ 压缩加密失败: {e}")
-            return False
-
-# ==========================================
-# 7. 上传压缩包至 Google 网盘
-# ==========================================
-class UploadToGoogleDriveStep(Step):
-    """步骤 4: 将加密后的压缩包使用 rclone 上传至 Google Drive"""
-    def __init__(self, remote_path: str = "fsxedx-Google-Drive:/Gmail/"):
-        self.remote_path = remote_path
-
-    def execute(self, ctx: WorkflowContext) -> bool:
-        # 1. 检查系统是否安装了 rclone
-        if not shutil.which("rclone"):
-            print("⚠️ 未检测到 rclone 命令，跳过 Google Drive 上传步骤。")
-            return True
-
-        # 2. 查找刚生成的 .tar.xz.age 文件
-        date_str = datetime.now().strftime("%Y-%m-%d")
-        output_filename = f"b-gmail-{date_str}.tar.xz.age"
-        local_file = Config.BASE_DIR / output_filename
-
-        if not local_file.exists():
-            print(f"⚠️ 未找到待上传的文件 [{output_filename}]，跳过上传。")
-            return True
-
-        # 3. 执行 rclone copy 上传
-        cmd = f"rclone copy '{local_file}' '{self.remote_path}'"
-        print(f"☁️ 正在上传文件到 Google Drive -> {self.remote_path}...")
-
-        try:
-            subprocess.run(cmd, shell=True, check=True)
-            print(f"🎉 成功上传 [{output_filename}] 到 {self.remote_path}")
-            return True
-        except subprocess.CalledProcessError as e:
-            print(f"❌ 上传至 Google Drive 失败: {e}")
-            return False
 
 # ==========================================
 # 6. 主程序入口
 # ==========================================
 def main():
     try:
-        # 1. 初始化 Gmail 服务
         service = GmailAuthManager.get_service()
 
-        # 你的 Age 公钥
-        AGE_PUBLIC_KEY = "age12qrn9as9d4z3glr09w8sn293ywxxgfehjpr74kavm4ut0esj29aqzcwmf8"
+        # 支持优先从环境变量读取 Age 公钥，若无则使用默认值
+        AGE_PUBLIC_KEY = os.environ.get("AGE_PUBLIC_KEY", "age12qrn9as9d4z3glr09w8sn293ywxxgfehjpr74kavm4ut0esj29aqzcwmf8")
 
-        # 2. 装配并运行工作流管道
         workflow = TorBridgeWorkflow(service)
         workflow.add_step(SendTorRequestStep()) \
                 .add_step(PollAndProcessTorReplyStep()) \
                 .add_step(CompressAndEncryptStep(age_public_key=AGE_PUBLIC_KEY)) \
                 .add_step(UploadToGoogleDriveStep(remote_path="fsxedx-Google-Drive:/Gmail/"))
-
-        # 💡 以后如果需要扩展，直接在此处加步骤即可:
-        # workflow.add_step(ParseBridgeContentStep())
-        # workflow.add_step(NotifyTelegramStep())
 
         workflow.run()
 
