@@ -1,3 +1,5 @@
+#!/home/tor/.python-env/bin/python
+
 import os
 import json
 import time
@@ -285,7 +287,7 @@ def main():
         workflow.add_step(SendTorRequestStep()) \
                 .add_step(PollAndProcessTorReplyStep()) \
                 .add_step(CompressAndEncryptStep(age_public_key=AGE_PUBLIC_KEY)) \
-                .add_step(UploadToGoogleDriveStep(remote_path="fsxedx-Google-Drive:/Gmail/"))
+                .add_step(UploadToGoogleDriveStep(remote_path="FEADXUS-Google-Drive:/Gmail/"))
 
         workflow.run()
 
