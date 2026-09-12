@@ -24,17 +24,17 @@ jobs:
         sudo apt-get update && sudo apt-get install -y skopeo
         curl https://rclone.org/install.sh | sudo bash
 
-    - name: 安装谷歌官方 API 依赖
-      env:
-        GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
-      run: python go.py
-
     - name: Setup rclone config
       env:
          RCLONE_SECRET_DATA: ${{ secrets.GOOGLE_FSXEDX_DRIVE }}
       run: |
         mkdir -p ~/.config/rclone
          echo "$RCLONE_SECRET_DATA" > ~/.config/rclone/rclone.conf
+
+    - name: 安装谷歌官方 API 依赖
+      env:
+        GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
+      run: python go.py
 
     # 📂 创建远程据点:去你的 Google Drive 上建一个叫 backup 的文件夹(如果不存在的话)
     - name: Create Google Drive Folder
