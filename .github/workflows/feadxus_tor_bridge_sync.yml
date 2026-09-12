@@ -47,5 +47,5 @@ jobs:
     - name: 执行发信与回捞闭环脚本
       env:
         # 核心安全:将 Secrets 中锁死的 JSON 注入进运行环境
-        GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
+        GOOGLE_FEADXUS_GMAIL: ${{ secrets.GOOGLE_FEADXUS_GMAIL }}
       run: python feadxus_send_tor_mail.py
