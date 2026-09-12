@@ -1,4 +1,4 @@
-name: FEADXUS-定时获取------------------------------Tor 网桥
+name: FEADXUS-定时获取
 
 on:
   schedule:
@@ -31,18 +31,8 @@ jobs:
         mkdir -p ~/.config/rclone
         echo "$RCLONE_SECRET_DATA" > ~/.config/rclone/rclone.conf
 
-    # 📂 创建远程据点:去你的 Google Drive 上建一个叫 backup 的文件夹(如果不存在的话)
-    - name: Create Google Drive Folder
-      run: |
-        rclone mkdir FEADXUS-Google-Drive:/Gmail || true
-
     - name: 安装谷歌官方 API 依赖
       run: python go.py
-
-    # 📂 创建远程据点:去你的 Google Drive 上建一个叫 backup 的文件夹(如果不存在的话)
-    - name: Create Google Drive Folder
-      run: |
-         rclone mkdir FEADXUS-Google-Drive:/Gmail || true
 
     - name: 执行发信与回捞闭环脚本
       env:
