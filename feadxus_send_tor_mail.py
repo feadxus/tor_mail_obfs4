@@ -1,5 +1,3 @@
-#!/home/tor/.python-env/bin/python
-
 import os
 import json
 import time
