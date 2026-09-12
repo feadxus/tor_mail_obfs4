@@ -56,9 +56,9 @@ class GmailAuthManager:
 
     @staticmethod
     def _load_credentials_from_env():
-        # 支持 GMAIL_TOKEN_JSON 或 GMAIL_TOKEN_JSON_FEADXUS
-        env_token_str = os.environ.get("GMAIL_TOKEN_JSON") or os.environ.get("GMAIL_TOKEN_JSON_FEADXUS")
-        
+        # Gmail 环境变量令牌
+        env_token_str = os.environ.get("GOOGLE_FEADXUS_GMAIL")
+
         if not env_token_str:
             return None
 
