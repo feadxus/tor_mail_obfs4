@@ -1,5 +1,3 @@
-#!/home/tor/.python-env/bin/python
-
 import os
 import json
 import time
@@ -221,7 +219,7 @@ class CompressAndEncryptStep(Step):
 
 class UploadToGoogleDriveStep(Step):
     """步骤 4: 使用 rclone 上传至 Google Drive"""
-    def __init__(self, remote_path: str = "fsxedx-Google-Drive:/Gmail/"):
+    def __init__(self, remote_path: str = "FEADXUS-Google-Drive:/Gmail/"):
         self.remote_path = remote_path
 
     def execute(self, ctx: WorkflowContext) -> bool:
