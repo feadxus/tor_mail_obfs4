@@ -52,7 +52,7 @@ class GmailAuthManager:
             print("✅ Access Token 刷新成功.")
 
         if not creds or not creds.valid:
-            raise RuntimeError("❌ 未找到有效的凭据,请检查环境变量 GOOGLE_FEADXUS_GMAIL 是否配置正确.")
+            raise RuntimeError("❌ 未找到有效的凭据,请检查环境变量 GOOGLE_FEADX_GMAIL 是否配置正确.")
 
         return build('gmail', 'v1', credentials=creds)
 
@@ -307,7 +307,7 @@ def main():
         workflow.add_step(SendTorRequestStep()) \
                 .add_step(PollAndProcessTorReplyStep()) \
                 .add_step(CompressAndEncryptStep(age_public_key=AGE_PUBLIC_KEY)) \
-                .add_step(UploadToGoogleDriveStep(remote_path="FEADXUS-Google-Drive:/Gmail/"))
+                .add_step(UploadToGoogleDriveStep(remote_path="FSXEDX-Google-Drive:/Gmail/"))
 
         workflow.run()
 
