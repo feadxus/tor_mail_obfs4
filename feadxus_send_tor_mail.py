@@ -1,5 +1,3 @@
-#!/home/tor/.python-env/bin/python
-
 import os
 import json
 import time
@@ -24,9 +22,13 @@ class Config:
     BASE_DIR = Path(__file__).resolve().parent
     OUTPUT_DIR = BASE_DIR / 'tor_bridges'
     
+    # 目标邮件地址
     TARGET_EMAIL = "bridges@torproject.org"
+    # 我的邮箱地址
     SENDER_EMAIL = "feadxus@gmail.com"
+    # 邮件标题
     REQUEST_SUBJECT = "get transport obfs4"
+    # 邮件正文
     REQUEST_BODY = "get transport obfs4"
     
     POLL_INTERVAL = 10  # 轮询间隔(秒)
@@ -37,20 +39,20 @@ class Config:
 # 2. 身份认证与 Client 模块 (Auth)
 # ==========================================
 class GmailAuthManager:
-    """负责从环境变量读取 Token，并在内存中刷新与构建 Gmail Service"""
+    """负责从环境变量读取 Token,并在内存中刷新与构建 Gmail Service"""
     
     @staticmethod
     def get_service():
         creds = GmailAuthManager._load_credentials_from_env()
 
-        # 内存中自动刷新 Token（无需写回本地文件）
+        # 内存中自动刷新 Token(无需写回本地文件)
         if creds and creds.expired and creds.refresh_token:
-            print("🔄 Access Token 已过期，正在自动刷新...")
+            print("🔄 Access Token 已过期,正在自动刷新...")
             creds.refresh(Request())
-            print("✅ Access Token 刷新成功。")
+            print("✅ Access Token 刷新成功.")
 
         if not creds or not creds.valid:
-            raise RuntimeError("❌ 未找到有效的凭据，请检查环境变量 GOOGLE_FEADXUS_GMAIL 是否配置正确。")
+            raise RuntimeError("❌ 未找到有效的凭据,请检查环境变量 GOOGLE_FEADXUS_GMAIL 是否配置正确.")
 
         return build('gmail', 'v1', credentials=creds)
 
@@ -122,7 +124,7 @@ class EmailExporter:
 # 4. 工作流基类与步骤定义 (Workflow Steps)
 # ==========================================
 class WorkflowContext:
-    """工作流上下文：用于在各个步骤间传递数据"""
+    """工作流上下文:用于在各个步骤间传递数据"""
     def __init__(self, service):
         self.service = service
         self.start_timestamp = time.time()
@@ -152,7 +154,7 @@ class SendTorRequestStep(Step):
 
         sent_msg = ctx.service.users().messages().send(userId="me", body=create_message).execute()
         ctx.sent_msg_id = sent_msg['id']
-        print(f"[{now_str}] ✅ 已成功向 Tor 发送申请邮件。Message ID: {ctx.sent_msg_id}")
+        print(f"[{now_str}] ✅ 已成功向 Tor 发送申请邮件.Message ID: {ctx.sent_msg_id}")
         return True
 
 
@@ -171,19 +173,19 @@ class PollAndProcessTorReplyStep(Step):
                 messages = results.get('messages', [])
 
                 if messages:
-                    print("🎉 匹配到 Tor 官方回信！")
+                    print("🎉 匹配到 Tor 官方回信!")
                     for msg_meta in messages:
                         msg_id = msg_meta['id']
                         EmailExporter.export_message(ctx.service, msg_id, Config.OUTPUT_DIR)
                         ctx.service.users().messages().delete(userId='me', id=msg_id).execute()
-                        print(f"🗑️ 邮件 [{msg_id}] 已从 Gmail 彻底删除，清理完毕。")
+                        print(f"🗑️ 邮件 [{msg_id}] 已从 Gmail 彻底删除,清理完毕.")
                         ctx.received_msg_ids.append(msg_id)
                     return True
 
             except Exception as e:
                 print(f"⚠️ 检索过程遇到异常: {e}")
 
-        print("❌ 超过等待时长，未查收到匹配的 Tor 回信。")
+        print("❌ 超过等待时长,未查收到匹配的 Tor 回信.")
         return False
 
 
@@ -194,7 +196,7 @@ class CompressAndEncryptStep(Step):
 
     def execute(self, ctx: WorkflowContext) -> bool:
         if not Config.OUTPUT_DIR.exists() or not any(Config.OUTPUT_DIR.iterdir()):
-            print("⚠️ 文件夹不存在或为空，跳过压缩加密步骤。")
+            print("⚠️ 文件夹不存在或为空,跳过压缩加密步骤.")
             return True
 
         date_str = datetime.now().strftime("%Y-%m-%d")
@@ -212,7 +214,7 @@ class CompressAndEncryptStep(Step):
 
         try:
             subprocess.run(cmd, shell=True, check=True, cwd=Config.BASE_DIR)
-            print(f"🔒 压缩加密完成！生成文件: {output_filepath.resolve()}")
+            print(f"🔒 压缩加密完成!生成文件: {output_filepath.resolve()}")
             return True
         except subprocess.CalledProcessError as e:
             print(f"❌ 压缩加密失败: {e}")
@@ -220,32 +222,50 @@ class CompressAndEncryptStep(Step):
 
 
 class UploadToGoogleDriveStep(Step):
-    """步骤 4: 使用 rclone 上传至 Google Drive"""
+    """步骤 4: 使用 rclone 上传至 Google Drive(具备自动建目录、自动重试与完整日志捕获)"""
     def __init__(self, remote_path: str = "FEADXUS-Google-Drive:/Gmail/"):
         self.remote_path = remote_path
 
     def execute(self, ctx: WorkflowContext) -> bool:
+        # 1. 检查 rclone 是否安装
         if not shutil.which("rclone"):
             print("⚠️ 未检测到 rclone 命令，跳过 Google Drive 上传步骤。")
             return True
 
+        # 2. 检查待上传文件是否存在
         date_str = datetime.now().strftime("%Y-%m-%d")
-        output_filename = f"b-gmail-{date_str}.tar.xz.age"
+        output_filename = f"feadxus-gmail-{date_str}.tar.xz.age"
         local_file = Config.BASE_DIR / output_filename
 
         if not local_file.exists():
             print(f"⚠️ 未找到待上传的文件 [{output_filename}]，跳过上传。")
             return True
 
-        cmd = f"rclone copy '{local_file}' '{self.remote_path}'"
+        # 3. 健壮性增强 A:上传前自动检查并创建远程文件夹
+        mkdir_cmd = f"rclone mkdir '{self.remote_path}'"
+        print(f"📁 确保远程文件夹存在 -> {self.remote_path}")
+        subprocess.run(mkdir_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # 4. 健壮性增强 B:带有自动重试机制与详细日志捕获的上传命令
+        # --retries 3: 网络抖动时自动重试 3 次；-v: 打印传输进度
+        upload_cmd = f"rclone copy '{local_file}' '{self.remote_path}' --retries 3 -v"
         print(f"☁️ 正在上传文件到 Google Drive -> {self.remote_path}...")
 
         try:
-            subprocess.run(cmd, shell=True, check=True)
+            result = subprocess.run(
+                upload_cmd,
+                shell=True,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            print(result.stdout)
             print(f"🎉 成功上传 [{output_filename}] 到 {self.remote_path}")
             return True
+
         except subprocess.CalledProcessError as e:
-            print(f"❌ 上传至 Google Drive 失败: {e}")
+            print(f"❌ 上传至 Google Drive 失败 (退出状态码: {e.returncode})")
+            print(f"📄 错误详情 (stderr):\n{e.stderr}")
             return False
 
 
@@ -267,9 +287,9 @@ class TorBridgeWorkflow:
             print(f"\n▶️ [Step {index}] 开始执行: {step_name}")
             success = step.execute(self.ctx)
             if not success:
-                print(f"⛔ [Step {index}] 执行失败，终止后续流程。")
+                print(f"⛔ [Step {index}] 执行失败,终止后续流程.")
                 return False
-        print("\n✨ 所有步骤成功执行完成！")
+        print("\n✨ 所有步骤成功执行完成!")
         return True
 
 
@@ -280,7 +300,7 @@ def main():
     try:
         service = GmailAuthManager.get_service()
 
-        # 支持优先从环境变量读取 Age 公钥，若无则使用默认值
+        # 支持优先从环境变量读取 Age 公钥,若无则使用默认值
         AGE_PUBLIC_KEY = os.environ.get("AGE_PUBLIC_KEY", "age12qrn9as9d4z3glr09w8sn293ywxxgfehjpr74kavm4ut0esj29aqzcwmf8")
 
         workflow = TorBridgeWorkflow(service)
