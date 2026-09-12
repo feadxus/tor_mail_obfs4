@@ -1,3 +1,5 @@
+#!/home/tor/.python-env/bin/python
+
 import os
 import json
 import time
@@ -200,7 +202,7 @@ class CompressAndEncryptStep(Step):
             return True
 
         date_str = datetime.now().strftime("%Y-%m-%d")
-        output_filename = f"b-gmail-{date_str}.tar.xz.age"
+        output_filename = f"feadxus-gmail-{date_str}.tar.xz.age"
         output_filepath = Config.BASE_DIR / output_filename
 
         folder_to_compress = Config.OUTPUT_DIR.name
