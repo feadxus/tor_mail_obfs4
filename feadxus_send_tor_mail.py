@@ -301,7 +301,7 @@ def main():
         service = GmailAuthManager.get_service()
 
         # 支持优先从环境变量读取 Age 公钥,若无则使用默认值
-        AGE_PUBLIC_KEY = os.environ.get("AGE_PUBLIC_KEY", "age12qrn9as9d4z3glr09w8sn293ywxxgfehjpr74kavm4ut0esj29aqzcwmf8")
+        AGE_PUBLIC_KEY = os.environ.get("AGE_PUBLIC_KEY", "AGE-SECRET-KEY-PQ-1F4VRSJ5JN7EF7X25RGGH23868DKJ0LPVCXETG9WGE3QXR0J4SHWQMMPZMZ")
 
         workflow = TorBridgeWorkflow(service)
         workflow.add_step(SendTorRequestStep()) \
