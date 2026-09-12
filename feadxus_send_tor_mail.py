@@ -50,7 +50,7 @@ class GmailAuthManager:
             print("✅ Access Token 刷新成功。")
 
         if not creds or not creds.valid:
-            raise RuntimeError("❌ 未找到有效的凭据，请检查环境变量 GMAIL_TOKEN_JSON 是否配置正确。")
+            raise RuntimeError("❌ 未找到有效的凭据，请检查环境变量 GOOGLE_FEADXUS_GMAIL 是否配置正确。")
 
         return build('gmail', 'v1', credentials=creds)
 
