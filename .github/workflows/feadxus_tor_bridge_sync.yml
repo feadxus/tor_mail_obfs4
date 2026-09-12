@@ -19,6 +19,11 @@ jobs:
       with:
         python-version: '3.10'
 
+    - name: ☁️ 安装 Google Drive 工具 (rclone) 与 skopeo
+      run: |
+        sudo apt-get update && sudo apt-get install -y skopeo
+        curl https://rclone.org/install.sh | sudo bash
+
     - name: 安装谷歌官方 API 依赖
       env:
         GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
