@@ -1,4 +1,4 @@
-name: FSXEDX-自动定时获取 Tor 网桥并打印日志
+name: FSXEDX-定时获取
 
 on:
   schedule:
@@ -19,11 +19,23 @@ jobs:
       with:
         python-version: '3.10'
 
+    - name: ☁️ 安装 Google Drive 工具 (rclone) 与 skopeo
+      run: |
+        sudo apt-get update && sudo apt-get install -y skopeo
+        curl https://rclone.org/install.sh | sudo bash
+
+    - name: Setup rclone config
+      env:
+        RCLONE_SECRET_DATA: ${{ secrets.GOOGLE_FSXEDX_DRIVE }}
+      run: |
+        mkdir -p ~/.config/rclone
+        echo "$RCLONE_SECRET_DATA" > ~/.config/rclone/rclone.conf
+
     - name: 安装谷歌官方 API 依赖
-      run: pip install google-auth-oauthlib google-api-python-client
+      run: python go.py
 
     - name: 执行发信与回捞闭环脚本
       env:
         # 核心安全:将 Secrets 中锁死的 JSON 注入进运行环境
-        GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
+        GOOGLE_FSXEDX_GMAIL: ${{ secrets.GOOGLE_FSXEDX_GMAIL }}
       run: python fsxedx_send_tor_mail.py
