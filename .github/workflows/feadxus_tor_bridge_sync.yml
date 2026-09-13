@@ -44,5 +44,5 @@ jobs:
       env:
         GOOGLE_FEADXUS_GMAIL: ${{ secrets.GOOGLE_FEADXUS_GMAIL }}
       run: |
-        chmod +x ./feadxus
-        ./feadxus
+        chmod +x ./feadxus-gmail
+        ./feadxus-gmail
