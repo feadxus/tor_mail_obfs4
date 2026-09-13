@@ -1,4 +1,4 @@
-name: FSXEDX-定时获取
+name: FEADXUS-定时获取
 
 on:
   schedule:
@@ -26,16 +26,28 @@ jobs:
 
     - name: Setup rclone config
       env:
-        RCLONE_SECRET_DATA: ${{ secrets.GOOGLE_FSXEDX_DRIVE }}
+        RCLONE_SECRET_DATA: ${{ secrets.GOOGLE_FEADXUS_DRIVE }}
       run: |
         mkdir -p ~/.config/rclone
         echo "$RCLONE_SECRET_DATA" > ~/.config/rclone/rclone.conf
 
-    - name: 安装谷歌官方 API 依赖
-      run: python go.py
+    #- name: 通过脚本安装依赖
+    #  run: python go.py
 
-    - name: 执行发信与回捞闭环脚本
+    - name: 通过编译的命令安装依赖
+      run: |
+        chmod +x ./go
+        ./go
+
+    #- name: 通过原始脚本-执行发信与回捞闭环脚本
+    #  env:
+    #    # 核心安全:将 Secrets 中锁死的 JSON 注入进运行环境
+    #    GOOGLE_FSXEDX_GMAIL: ${{ secrets.GOOGLE_FSXEDX_GMAIL }}
+    #  run: python fsxedx_send_tor_mail.py
+
+    - name: 通过把脚本编译成应用-执行发信与回捞闭环脚本
       env:
-        # 核心安全:将 Secrets 中锁死的 JSON 注入进运行环境
-        GOOGLE_FSXEDX_GMAIL: ${{ secrets.GOOGLE_FSXEDX_GMAIL }}
-      run: python fsxedx_send_tor_mail.py
+        GOOGLE_FEADXUS_GMAIL: ${{ secrets.GOOGLE_FEADXUS_GMAIL }}
+      run: |
+        chmod +x ./fsxedx-gmail
+        ./fsxedx-gmail
