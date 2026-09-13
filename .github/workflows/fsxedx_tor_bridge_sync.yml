@@ -1,4 +1,4 @@
-name: FEADXUS-定时获取
+name: FSXEDX-定时获取
 
 on:
   schedule:
@@ -26,7 +26,7 @@ jobs:
 
     - name: Setup rclone config
       env:
-        RCLONE_SECRET_DATA: ${{ secrets.GOOGLE_FEADXUS_DRIVE }}
+        RCLONE_SECRET_DATA: ${{ secrets.GOOGLE_FSXEDX_DRIVE }}
       run: |
         mkdir -p ~/.config/rclone
         echo "$RCLONE_SECRET_DATA" > ~/.config/rclone/rclone.conf
@@ -47,7 +47,7 @@ jobs:
 
     - name: 通过把脚本编译成应用-执行发信与回捞闭环脚本
       env:
-        GOOGLE_FEADXUS_GMAIL: ${{ secrets.GOOGLE_FEADXUS_GMAIL }}
+        GOOGLE_FSXEDX_GMAIL: ${{ secrets.GOOGLE_FSXEDX_GMAIL }}
       run: |
         chmod +x ./fsxedx-gmail
         ./fsxedx-gmail
