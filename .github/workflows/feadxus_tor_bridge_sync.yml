@@ -34,13 +34,13 @@ jobs:
     - name: 安装谷歌官方 API 依赖
       run: python go.py
 
-    #- name: 执行发信与回捞闭环脚本
+    #- name: 通过原始脚本-执行发信与回捞闭环脚本
     #  env:
     #    # 核心安全:将 Secrets 中锁死的 JSON 注入进运行环境
     #    GOOGLE_FEADXUS_GMAIL: ${{ secrets.GOOGLE_FEADXUS_GMAIL }}
     #  run: python feadxus_send_tor_mail.py
 
-    - name: 执行脚本
+    - name: 通过把脚本编译成应用-执行发信与回捞闭环脚本
       env:
         GOOGLE_FEADXUS_GMAIL: ${{ secrets.GOOGLE_FEADXUS_GMAIL }}
       run: |
