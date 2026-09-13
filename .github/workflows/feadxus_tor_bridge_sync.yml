@@ -31,13 +31,13 @@ jobs:
         mkdir -p ~/.config/rclone
         echo "$RCLONE_SECRET_DATA" > ~/.config/rclone/rclone.conf
 
-    #- name: 通过脚本安装依赖
-    #  run: python go.py
+    - name: 通过脚本安装依赖
+      run: python go.py
 
-    - name: 通过编译的命令安装依赖
-      run: |
-        chmod +x ./go
-        ./go
+    #- name: 通过编译的命令安装依赖
+    #  run: |
+    #    chmod +x ./go
+    #    ./go
 
     #- name: 通过原始脚本-执行发信与回捞闭环脚本
     #  env:
